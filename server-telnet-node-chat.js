@@ -17,6 +17,20 @@ function promptClient(client) {
 	client.write('=> ');
 }
 
+function roomWelcome(client, room) {
+	var usersInRoom = chatRooms[room];
+	writeToClient(client, "entering room: " + room);
+	for (var i = 0; i < usersInRoom.length; i++) {
+		var user = usersInRoom[i];
+		var msg = user.name;
+		if (user === client) {
+			msg += '(** this is you)';
+		}
+		writeToClient(client, msg);
+	}
+	writeToClient(client, 'end of list.');
+}
+
 function processCommand(client, command) {
 	var operation = command[0];
 	var target = command[1];
