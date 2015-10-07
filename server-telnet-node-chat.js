@@ -71,7 +71,7 @@ function processClient(client, data) {
 		if (isCommand) { //execute command
 			var commandArgs = msg.split(/\s+/);
 			processCommand(client, commandArgs);
-		} else if (client.currRoom !== null){ //talk to room.
+		} else if (client.currRoom){ //talk to room.
 			broadcast(msg, client, client.currRoom);
 			return;
 		} else { //still not in a chatroom.
