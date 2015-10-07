@@ -1,6 +1,3 @@
-// A Simple nod.js chat server using telent from O'reilly's node up and running
-
-
 var net = require('net');
 
 var chatServer = net.createServer();
@@ -17,7 +14,7 @@ function promptClient(client) {
 	client.write('=> ');
 }
 
-function roomWelcome(client, room) {
+function roomWelcomeMessage(client, room) {
 	var usersInRoom = chatRooms[room];
 	writeToClient(client, "entering room: " + room);
 	for (var i = 0; i < usersInRoom.length; i++) {
@@ -46,6 +43,7 @@ function processCommand(client, command) {
 		if (chatRooms.hasOwnProperty(target)) { //join new room if room valid.
 			client.currRoom = target;
 			chatRooms[target].push(client);
+			roomWelcomeMessage(client, target);
 		} else {
 			writeToClient(client, "Room " + target + " does not exist");
 		}
@@ -53,8 +51,7 @@ function processCommand(client, command) {
 		if (!client.currRoom) {
 			writeToClient(client, "You are not in a chat room.");
 		} else {
-			client.currRoom = null;
-			removeFromChatroom(client, target);
+			removeFromChatroom(client);
 		}
 	} else if (operation === '/quit') {
 
@@ -63,9 +60,11 @@ function processCommand(client, command) {
 	}
 }
 
-function removeFromChatroom(client, room) {
-	var idx = chatRooms[room].indexOf(client); //remove
-	array.splice(idx, 1);
+function removeFromChatroom(client) {
+	var users = chatRooms[client.currRoom];
+	var idx = users.indexOf(client);
+	users.splice(idx, 1); //remove client from users
+	client.currRoom = null; //remove room from client.
 }
 
 function processClient(client, data) {
