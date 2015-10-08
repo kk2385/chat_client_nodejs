@@ -12,11 +12,11 @@ function ClientManager(client) {
 }
 
 ClientManager.prototype.chatRooms = {
-  'sauna': [],
+  'sauna': [], //example chatrooms that don't have a room opener.
   'hottub': []
 };
 ClientManager.prototype.nameToClientManager = {}; //maps a username to a ClientManager
-ClientManager.prototype.roomMasters = {}; //maps a username to a ClientManager
+ClientManager.prototype.roomMasters = {}; //maps a room name to a user name. keep track of users opening/closing rooms
 
 ClientManager.prototype.writeToClient = function(message) {
   this.client.write('<= ' + message + '\n');
@@ -38,14 +38,14 @@ ClientManager.prototype.processClientData = function(data) {
       var splitString = msg.split(/\s+/);
       var command = splitString[0];
       var target = splitString[1];
-      var msgQuoted = msg.match(/"[\s\S]*"/); //for whispers in the form of /whisper jack "hello"
-      var commandArgs = [command, target, msgQuoted? msgQuoted[0] : undefined];
+      var msgQuoted = msg.match(/"[\s\S]*"/); //gets double quoted string from input. for whispers in the form of /whisper jack "hello"
+      var commandArgs = [command, target, msgQuoted ? msgQuoted[0] : undefined];
       //some commandArgs examples: ["/join", "chatroom1", undefined], ["/leave", undefined, undefined], ["/whisper", "jack", 'hello']
       this.processCommand(commandArgs);
     } else if (this.roomname) { //talk to room.
       this.messageChatroom(msg, this.roomname);
     } else { //still not in a chatroom.
-      this.writeToClient('"/join <roomname>" to start chatting with others.');
+      this.writeToClient('"/join <roomname>" to start chatting with others. Enter "/help" for all available commands');
       this.promptClient();
     }
   }
@@ -58,7 +58,7 @@ ClientManager.prototype.processCommand = function(command) {
   if (commands.hasOwnProperty(operation)) {
     commands[operation].call(this, target, msg);
   } else {
-    this.writeToClient('Please enter a proper command. Example: /rooms, /join)');
+    this.writeToClient('Please enter a valid command. Example: /rooms, /join. Enter "/help" for all available commands');
     this.promptClient();
   }
 };
@@ -155,7 +155,7 @@ ClientManager.prototype.whisperTo = function(destUser, message) {
     this.writeToClient('Whispered to ' + destUser + ': ' + message);
     receiver.promptClient();
   } else {
-    this.writeToClient(destUser, "is not a valid username!");
+    this.writeToClient(destUser + " is not a valid username!");
   }
   this.promptClient();
 };

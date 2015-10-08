@@ -92,6 +92,7 @@ function help() {
   this.writeToClient('/quit : disconnect from chat server');
   this.writeToClient('/help : display all available commands');
   this.writeToClient('-----------------------------');
+  this.promptClient();
 }
 module.exports = {
   '/join': join,
