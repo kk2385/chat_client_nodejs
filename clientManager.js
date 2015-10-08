@@ -16,6 +16,7 @@ ClientManager.prototype.chatRooms = {
   'hottub': []
 };
 ClientManager.prototype.nameToClientManager = {}; //maps a username to a ClientManager
+ClientManager.prototype.roomMasters = {}; //maps a username to a ClientManager
 
 ClientManager.prototype.writeToClient = function(message) {
   this.client.write('<= ' + message + '\n');
@@ -40,7 +41,6 @@ ClientManager.prototype.processClientData = function(data) {
       var msgQuoted = msg.match(/"[\s\S]*"/); //for whispers in the form of /whisper jack "hello"
       var commandArgs = [command, target, msgQuoted? msgQuoted[0] : undefined];
       //some commandArgs examples: ["/join", "chatroom1", undefined], ["/leave", undefined, undefined], ["/whisper", "jack", 'hello']
-      console.log('commandArgs:', commandArgs);
       this.processCommand(commandArgs);
     } else if (this.roomname) { //talk to room.
       this.messageChatroom(msg, this.roomname);
