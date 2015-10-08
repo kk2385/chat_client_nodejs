@@ -6,7 +6,7 @@ function ClientManager(client) {
   this.client = client;
   this.username = undefined;
   this.roomname = undefined;
-  this.writeToClient('Welcome to the XYZ chat server');
+  this.writeToClient('Welcome to the Jack\'s chat server');
   this.writeToClient('Login Name?');
   this.promptClient();
 }
