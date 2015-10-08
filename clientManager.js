@@ -1,6 +1,6 @@
-var chatRooms = {'sauna':[], 'hottub': []};
-var nameToClientManager	 = {};
-var commands = ['/rooms', '/join', '/leave', '/quit'];
+//manages all the interactions that a client has, such as joining and leaving
+//a room.
+var commands = require('./commands');
 
 function ClientManager(client) {
 	this.client = client;
@@ -11,6 +11,40 @@ function ClientManager(client) {
 	this.promptClient();
 }
 
+ClientManager.prototype.chatRooms = {'sauna':[], 'hottub': []};
+ClientManager.prototype.nameToClientManager	= {}; //maps a username to a ClientManager
+
+//this executes when user submits input.
+ClientManager.prototype.processClientData = function(data) {
+	if (!this.username) { //namesetup
+		this.attemptSetName(data);
+    this.promptClient();
+	} else {
+		var msg = data.toString().trim();
+		var isCommand = msg.charAt(0) === '/';
+		if (isCommand) { //execute command
+			var commandArgs = msg.split(/\s+/);
+			this.processCommand(commandArgs);
+		} else if (this.roomname) { //talk to room.
+			this.messageChatroom(msg, this.roomname);
+		} else { //still not in a chatroom.
+			this.writeToClient('"/join <roomname>" to start chatting with others.');
+      this.promptClient();
+		}
+	}
+};
+
+ClientManager.prototype.processCommand = function(command) {
+	var operation = command[0];
+	var target = command[1]; //for whispers/joining room
+  var msg = command[2]; //for whispers
+  if (commands.hasOwnProperty(operation)) {
+    commands[operation].call(this, target);
+  } else {
+    this.writeToClient('Please enter a proper command. Example: /rooms, /join)');
+  }
+};
+
 ClientManager.prototype.writeToClient = function (message) {
 	this.client.write('<= ' + message + '\n');
 };
@@ -19,111 +53,79 @@ ClientManager.prototype.promptClient = function() {
 	this.client.write('=> ');
 };
 
-ClientManager.prototype.roomWelcomeMessage = function(room) {
-	var usersInRoom = chatRooms[room];
-	this.writeToClient("entering room: " + room);
-	for (var i = 0; i < usersInRoom.length; i++) {
-		var user = usersInRoom[i].username;
-		user += (user === this.username)? ' (** this is you)' : '';
-		this.writeToClient(user);
-	}
-	this.writeToClient('end of list.');
-};
-
-ClientManager.prototype.processCommand = function(command) {
-	var operation = command[0];
-	var target = command[1];
-	var client = this.client;
-	if (operation === '/rooms') {
-		this.writeToClient("Active rooms are:");
-		for (var room in chatRooms) {
-			this.writeToClient("* " + room + "(" + chatRooms[room].length +")");
-		}
-	} else if (operation === '/join') {
-		if (this.roomname) { //leave current room.
-			this.removeFromChatroom();
-		}
-		if (chatRooms.hasOwnProperty(target)) { //join new room if room valid.
-			this.roomname = target;
-			chatRooms[target].push(this);
-			this.roomWelcomeMessage(target);
-		} else {
-			this.writeToClient("Room " + target + " does not exist");
-		}
-	} else if (operation === '/leave') {
-		if (!this.roomname) {
-			this.writeToClient("You are not in a chat room.");
-		} else {
-			this.removeFromChatroom();
-		}
-	} else if (operation === '/quit') {
-
-	} else {
-		this.writeToClient('Please enter a proper command. Example: /rooms, /join)');
-	}
-};
-
-ClientManager.prototype.removeFromChatroom = function() {
-	var client = this.client;
-	var users = chatRooms[this.roomname];
-	var idx = users.indexOf(client);
+//remove myself from a chatroom.
+ClientManager.prototype.removeSelfFromChatroom = function() {
+	var users = this.chatRooms[this.roomname];
+	var idx = users.indexOf(this);
 	users.splice(idx, 1); //remove client from users
 	this.roomname = undefined; //remove room from client.
 };
 
-ClientManager.prototype.setName = function(data) {
-	var client = this.client;
+//validates data as a proper username and sets if it's valid.
+ClientManager.prototype.attemptSetName = function(data) {
 	var newName = data.toString().trim();
-	if (nameToClientManager.hasOwnProperty(newName)) {
+	if (this.nameToClientManager.hasOwnProperty(newName)) {
 		this.writeToClient("Sorry, name taken.");
 		this.writeToClient("Login Name?");
 	} else {
 		this.writeToClient("Welcome " + newName + '!');
 		this.username = newName;
-		nameToClientManager[newName] = this;
+		this.nameToClientManager[newName] = this;
 	}
 };
 
-ClientManager.prototype.processClient = function(data) {
-	var client = this.client;
-	if (!this.username) { //namesetup
-		this.setName(data);
-	} else {
-		var msg = data.toString().trim();
-		var isCommand = msg.charAt(0) === '/';
-		if (isCommand) { //execute command
-			var commandArgs = msg.split(/\s+/);
-			this.processCommand(commandArgs);
-		} else if (this.roomname){ //talk to room.
-			this.broadcast(msg, this.roomname);
-			return;
-		} else { //still not in a chatroom.
-			this.writeToClient('"/join <roomname>" to start chatting with others.');
-		}
+
+//display all users in the chat room I just entered.
+ClientManager.prototype.roomWelcomeMessage = function(room) {
+	var usersInRoom = this.chatRooms[room];
+	this.writeToClient("entering room: " + room);
+	for (var i = 0; i < usersInRoom.length; i++) {
+		var user = usersInRoom[i].username;
+    var msg = ' * ' + user;
+    msg += (user === this.username)? ' (** this is you)' : '';
+		this.writeToClient(msg);
 	}
-	this.promptClient();
+	this.writeToClient('end of list.');
 };
 
-ClientManager.prototype.broadcast = function(message, room) {
-	var client = this.client;
-	for (var i = 0; i < chatRooms[room].length; i++) { //msg everyone on chatroom.
-		var currClient = chatRooms[room][i];
-	//	console.log("currClient name:", currClient.name, "sender name:", client.name,
-	//	"manager name:", currClientManager.client.name);
-		var result = "";
+//tell everyone in the chatroom that you are leaving.
+ClientManager.prototype.announceMeEntering = function() {
+  var room = this.roomname;
+  for (var i = 0; i < this.chatRooms[room].length; i++) { //msg everyone on chatroom.
+		var currClient = this.chatRooms[room][i];
 		if (currClient.username !== this.username) {
-			result += "\n";
+      var result = currClient.username;
+      currClient.client.write('\n');
+      currClient.writeToClient('* new user joined chat:' + result);
+      currClient.promptClient();
 		}
+	}
+};
+
+//tell everyone in the chatroom that you are leaving.
+ClientManager.prototype.announceMeLeaving = function() {
+  var room = this.roomname;
+  for (var i = 0; i < this.chatRooms[room].length; i++) { //msg everyone on chatroom.
+		var currClient = this.chatRooms[room][i];
+		var result = currClient.username;
+		if (currClient.username === this.username) {
+			result += ' (** this is you)';
+		}
+    if (currClient.username !== this.username) currClient.client.write('\n');
+		currClient.writeToClient("* user has left chat:" + result);
+    currClient.promptClient();
+	}
+};
+
+//send a message to everyone in the room.
+ClientManager.prototype.messageChatroom = function(message, room) {
+	for (var i = 0; i < this.chatRooms[room].length; i++) { //msg everyone on chatroom.
+		var currClient = this.chatRooms[room][i];
+		var result = currClient.username !== this.username? '\n' : ''; //new line if i am sender.
 		result += "<= " + this.username + ": " + message + "\n";
 		currClient.client.write(result);
 		currClient.promptClient();
 	}
 };
 
-
-module.exports = {
-  chatRooms: chatRooms,
-  nameToClientManager: nameToClientManager,
-  commands: commands,
-  ClientManager: ClientManager
-};
+module.exports = ClientManager;
