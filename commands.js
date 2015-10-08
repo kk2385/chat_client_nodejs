@@ -28,7 +28,7 @@ function rooms() {
   this.writeToClient("Active rooms are:");
   var chatRooms = this.chatRooms;
   for (var room in chatRooms) {
-    this.writeToClient("* " + room + "(" + chatRooms[room].length +")");
+    this.writeToClient("* " + room + "(" + chatRooms[room].length + ")");
   }
   this.promptClient();
 }
@@ -45,5 +45,5 @@ module.exports = {
   '/join': join,
   '/leave': leave,
   '/rooms': rooms,
-  '/quit' : quit
+  '/quit': quit
 };

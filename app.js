@@ -5,10 +5,10 @@ var ClientManager = require('./clientManager');
 var chatServer = net.createServer();
 
 chatServer.on('connection', function(client) {
-	var cm = new ClientManager(client);
-	client.on('data', function(data) {
-		cm.processClientData(data);
-	});
+  var cm = new ClientManager(client);
+  client.on('data', function(data) {
+    cm.processClientData(data);
+  });
 });
 
 chatServer.listen(9399);
