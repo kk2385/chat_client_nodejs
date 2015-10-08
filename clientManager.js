@@ -162,7 +162,7 @@ ClientManager.prototype.whisperTo = function(destUser, message) {
 
 ClientManager.prototype.forceQuit = function() {
   if (this.roomname) {
-    leave.call(this);
+    this.removeSelfFromChatroom();
   }
   delete this.nameToClientManager[this.username];
 };

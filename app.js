@@ -12,7 +12,7 @@ chatServer.on('connection', function(client) {
   });
 
   client.on('end', function() {
-    cm.forceQuit(); //executes if connection ends ubruptly.
+    cm.forceQuit(); //executes if connection ends ubruptly (^] or disconnect)
   });
 });
 
