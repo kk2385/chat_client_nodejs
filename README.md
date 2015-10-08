@@ -2,7 +2,7 @@
 
 A telnet chat server built with node.js net module.
 
-To run the server, run:
+To run the server on OS X, run:
 
 ```
 $ node app.js

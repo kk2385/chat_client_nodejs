@@ -160,4 +160,11 @@ ClientManager.prototype.whisperTo = function(destUser, message) {
   this.promptClient();
 };
 
+ClientManager.prototype.forceQuit = function() {
+  if (this.roomname) {
+    leave.call(this);
+  }
+  delete this.nameToClientManager[this.username];
+};
+
 module.exports = ClientManager;

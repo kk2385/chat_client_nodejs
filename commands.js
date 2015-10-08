@@ -77,6 +77,7 @@ function quit() {
   if (this.roomname) {
     leave.call(this);
   }
+  delete this.nameToClientManager[this.username];
   this.writeToClient('BYE');
   this.client.end();
 }
