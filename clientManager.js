@@ -17,6 +17,14 @@ ClientManager.prototype.chatRooms = {
 };
 ClientManager.prototype.nameToClientManager = {}; //maps a username to a ClientManager
 
+ClientManager.prototype.writeToClient = function(message) {
+  this.client.write('<= ' + message + '\n');
+};
+
+ClientManager.prototype.promptClient = function() {
+  this.client.write('=> ');
+};
+
 //this executes when user submits input.
 ClientManager.prototype.processClientData = function(data) {
   if (!this.username) { //namesetup
@@ -26,7 +34,13 @@ ClientManager.prototype.processClientData = function(data) {
     var msg = data.toString().trim();
     var isCommand = msg.charAt(0) === '/';
     if (isCommand) { //execute command
-      var commandArgs = msg.split(/\s+/);
+      var splitString = msg.split(/\s+/);
+      var command = splitString[0];
+      var target = splitString[1];
+      var msgQuoted = msg.match(/"[\s\S]*"/); //for whispers in the form of /whisper jack "hello"
+      var commandArgs = [command, target, msgQuoted? msgQuoted[0] : undefined];
+      //some commandArgs examples: ["/join", "chatroom1", undefined], ["/leave", undefined, undefined], ["/whisper", "jack", 'hello']
+      console.log('commandArgs:', commandArgs);
       this.processCommand(commandArgs);
     } else if (this.roomname) { //talk to room.
       this.messageChatroom(msg, this.roomname);
@@ -42,18 +56,28 @@ ClientManager.prototype.processCommand = function(command) {
   var target = command[1]; //for whispers/joining room
   var msg = command[2]; //for whispers
   if (commands.hasOwnProperty(operation)) {
-    commands[operation].call(this, target);
+    commands[operation].call(this, target, msg);
   } else {
     this.writeToClient('Please enter a proper command. Example: /rooms, /join)');
+    this.promptClient();
   }
 };
 
-ClientManager.prototype.writeToClient = function(message) {
-  this.client.write('<= ' + message + '\n');
-};
-
-ClientManager.prototype.promptClient = function() {
-  this.client.write('=> ');
+//validates data as a proper username and sets if it's valid.
+ClientManager.prototype.attemptSetName = function(data) {
+  var newName = data.toString().trim();
+  if (!newName.match(/^[a-z0-9_-]{3,15}$/)) { //validate
+    this.writeToClient("No spaces or special characters in name please!");
+    this.writeToClient("Also, keep it between 3 and 15 letters");
+    this.writeToClient("Login Name?");
+  } else if (this.nameToClientManager.hasOwnProperty(newName)) {
+    this.writeToClient("Sorry, name taken.");
+    this.writeToClient("Login Name?");
+  } else {
+    this.writeToClient("Welcome " + newName + '!');
+    this.username = newName;
+    this.nameToClientManager[newName] = this;
+  }
 };
 
 //remove myself from a chatroom.
@@ -62,19 +86,6 @@ ClientManager.prototype.removeSelfFromChatroom = function() {
   var idx = users.indexOf(this);
   users.splice(idx, 1); //remove client from users
   this.roomname = undefined; //remove room from client.
-};
-
-//validates data as a proper username and sets if it's valid.
-ClientManager.prototype.attemptSetName = function(data) {
-  var newName = data.toString().trim();
-  if (this.nameToClientManager.hasOwnProperty(newName)) {
-    this.writeToClient("Sorry, name taken.");
-    this.writeToClient("Login Name?");
-  } else {
-    this.writeToClient("Welcome " + newName + '!');
-    this.username = newName;
-    this.nameToClientManager[newName] = this;
-  }
 };
 
 
@@ -116,7 +127,7 @@ ClientManager.prototype.announceMeLeaving = function() {
     }
     if (currClient.username !== this.username) currClient.client.write('\n');
     currClient.writeToClient("* user has left chat:" + result);
-    currClient.promptClient();
+    if (currClient.username !== this.username) currClient.promptClient(); //avoid double printing prompt arrows <=
   }
 };
 
@@ -129,6 +140,24 @@ ClientManager.prototype.messageChatroom = function(message, room) {
     currClient.client.write(result);
     currClient.promptClient();
   }
+};
+
+//whisper to a certain user in the room.
+ClientManager.prototype.whisperTo = function(destUser, message) {
+  if (!message) {
+    this.writeToClient('You can send a whisper to another person online by entering /whisper <name> "message". Use double quotes!');
+  } else if (destUser === this.username) {
+    this.writeToClient("Why are you whispering to yourself?");
+  } else if (this.nameToClientManager.hasOwnProperty(destUser)) {
+    var receiver = this.nameToClientManager[destUser];
+    receiver.client.write('\n');
+    receiver.writeToClient('Whisper from ' + this.username + ': ' + message);
+    this.writeToClient('Whispered to ' + destUser + ': ' + message);
+    receiver.promptClient();
+  } else {
+    this.writeToClient(destUser, "is not a valid username!");
+  }
+  this.promptClient();
 };
 
 module.exports = ClientManager;

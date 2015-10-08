@@ -1,4 +1,6 @@
 //all the viable commands.
+
+//join a room.
 function join(room) {
   if (this.roomname) { //leave current room.
     this.removeSelfFromChatroom();
@@ -14,6 +16,7 @@ function join(room) {
   this.promptClient();
 }
 
+//leave a room.
 function leave() {
   if (!this.roomname) {
     this.writeToClient("You are not in a chat room.");
@@ -24,6 +27,7 @@ function leave() {
   this.promptClient();
 }
 
+//display all available rooms
 function rooms() {
   this.writeToClient("Active rooms are:");
   var chatRooms = this.chatRooms;
@@ -33,6 +37,23 @@ function rooms() {
   this.promptClient();
 }
 
+//create a room.
+function create(newRoom) {
+  if (!this.chatRooms.hasOwnProperty(newRoom)) {
+    this.chatRooms[newRoom] = [];
+    this.writeToClient('created new room', newRoom);
+  } else {
+    this.writeToClient(newRoom, "already exists!");
+  }
+  this.promptClient();
+}
+
+//send a private message to a person.
+function whisper(user, message) {
+  this.whisperTo(user, message);
+}
+
+//disconnect from server.
 function quit() {
   if (this.roomname) {
     leave.call(this);
@@ -45,5 +66,7 @@ module.exports = {
   '/join': join,
   '/leave': leave,
   '/rooms': rooms,
+  '/create': create,
+  '/whisper': whisper,
   '/quit': quit
 };
